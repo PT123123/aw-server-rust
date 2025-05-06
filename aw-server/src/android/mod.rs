@@ -11,6 +11,10 @@ use crate::dirs;
 
 use android_logger::Config;
 use rocket::serde::json::json;
+use log::{info, warn, debug, error};
+use std::sync::Mutex;
+use std::sync::Arc;
+use aw_inbox_rust::{db, SharedDb};
 
 #[no_mangle]
 pub extern "C" fn rust_greeting(to: *const c_char) -> *mut c_char {
@@ -371,29 +375,67 @@ pub mod android {
 
     #[rocket::main]
     async fn start_server() {
-        info!("开始构建服务器状态...");
+        info!("[startserverAndroid] 开始构建服务器状态...");
 
 // FIXME: Why is unsafe needed here? Can we get rid of it?
 unsafe {
-    debug!("开始创建服务器状态...");
+    debug!("[startserverAndroid] 开始创建服务器状态...");
     let server_state: ServerState = endpoints::ServerState {
         datastore: Mutex::new(openDatastore()),
         asset_resolver: endpoints::AssetResolver::new(None),
         device_id: device_id::get_device_id(),
     };
-    info!("使用的 server_state 设备 ID: {}", server_state.device_id);
-    debug!("服务器状态创建完成，设备 ID: {}", server_state.device_id);
+    info!("[startserverAndroid] 使用的 server_state 设备 ID: {}", server_state.device_id);
+    debug!("[startserverAndroid] 服务器状态创建完成，设备 ID: {}", server_state.device_id);
 
-    debug!("开始加载默认服务器配置...");
+    debug!("[startserverAndroid] 开始加载默认服务器配置...");
     let mut server_config: AWConfig = AWConfig::default();
     server_config.port = 5600;
-    debug!("服务器配置加载完成，端口设置为: {}", server_config.port);
+    debug!("[startserverAndroid] 服务器配置加载完成，端口设置为: {}", server_config.port);
 
-    debug!("开始构建 Rocket 服务器...");
-    endpoints::build_rocket(server_state, server_config)
-        .launch()
-        .await;
-    debug!("Rocket 服务器启动流程结束");
+    // 设置数据目录环境变量
+    let data_dir = dirs::db_path(false)
+        .expect("Failed to get db path")
+        .parent()
+        .expect("Failed to get parent directory")
+        .to_str()
+        .expect("Failed to convert path to string")
+        .to_string();
+    std::env::set_var("DATA_DIR", &data_dir);
+    debug!("[startserverAndroid] 设置数据目录: {}", data_dir);
+
+    debug!("[startserverAndroid] 开始初始化 inbox 数据库连接池...");
+    debug!("[startserverAndroid] 正在创建数据库连接池...");
+    let pool = match db::init_pool().await {
+        Ok(pool) => {
+            debug!("[startserverAndroid] 数据库连接池创建成功");
+            pool
+        },
+        Err(e) => {
+            error!("[startserverAndroid] 数据库连接池创建失败: {:?}", e);
+            panic!("Failed to init inbox db pool");
+        }
+    };
+    
+    debug!("[startserverAndroid] 开始执行数据库迁移...");
+    match db::migrate(&pool) {
+        Ok(_) => debug!("[startserverAndroid] 数据库迁移成功"),
+        Err(e) => {
+            error!("[startserverAndroid] 数据库迁移失败: {:?}", e);
+            panic!("数据库迁移失败");
+        }
+    };
+    
+    debug!("[startserverAndroid] 正在创建共享数据库实例...");
+    let shared_db: SharedDb = Arc::new(Mutex::new(pool));
+    debug!("[startserverAndroid] 共享数据库实例创建完成");
+    debug!("[startserverAndroid] inbox 数据库连接池初始化完成");
+
+    debug!("[startserverAndroid] 开始构建 Rocket 服务器并注册 inbox 插件...");
+    let rocket = endpoints::build_rocket(server_state, server_config);
+    let rocket = crate::plugins::register_all_plugins(rocket, shared_db);
+    rocket.launch().await;
+    debug!("[startserverAndroid] Rocket 服务器启动流程结束");
 }
     }
 

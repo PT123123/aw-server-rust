@@ -156,10 +156,16 @@ async fn main() -> Result<(), rocket::Error> {
     use aw_inbox_rust::db;
     use aw_inbox_rust::SharedDb;
     use std::sync::Arc;
-    use tokio::sync::Mutex as TokioMutex;
+    
+    // 定义inbox数据库路径
+    let inbox_db_path = "inbox.db"; // 使用默认路径
+    
+    // 先迁移数据库
+    aw_inbox_rust::migrate_db(inbox_db_path).await.expect("数据库迁移失败");
+    
+    // 然后初始化连接池
     let pool = db::init_pool().await.expect("Failed to init inbox db pool");
-    db::migrate(&pool).await.expect("数据库迁移失败");
-    let shared_db: SharedDb = Arc::new(TokioMutex::new(pool));
+    let shared_db: SharedDb = Arc::new(Mutex::new(pool));
     let rocket = plugins::register_all_plugins(rocket, shared_db);
 
     let _rocket = rocket.ignite().await?;
