@@ -57,17 +57,12 @@ pub fn get_data_dir() -> Result<PathBuf, ()> {
             // 锁可能已经被毒化(poisoned)，这通常发生在另一个线程在持有锁时发生了panic
             error!("[修改版本2] 无法获取 ANDROID_DATA_DIR 锁: {:?}", e);
             
-            // 尝试获取被毒化的锁
-            if let Ok(poisoned_lock) = ANDROID_DATA_DIR.lock() {
-                error!("[修改版本2] 获取到被毒化的锁，尝试恢复");
-                let path = poisoned_lock.to_path_buf();
-                debug!("[修改版本2] 使用被毒化的锁获取路径: {:?}", path);
-                Ok(path)
-            } else {
-                error!("[修改版本2] 无法恢复被毒化的锁，返回默认路径");
-                // 返回一个默认路径，避免崩溃
-                Ok(PathBuf::from("/data/user/0/net.activitywatch.android/files"))
-            }
+            // 尝试获取被毒化的锁的数据
+            let poisoned_lock = e.into_inner();
+            error!("[修改版本2] 获取到被毒化的锁，尝试恢复");
+            let path = poisoned_lock.to_path_buf();
+            debug!("[修改版本2] 使用被毒化的锁获取路径: {:?}", path);
+            Ok(path)
         }
     }
 }
@@ -160,14 +155,11 @@ pub fn set_android_data_dir(path: &str) {
             // 锁可能已经被毒化(poisoned)，这通常发生在另一个线程在持有锁时发生了panic
             error!("[修改版本2] 无法获取 ANDROID_DATA_DIR 锁: {:?}", e);
             
-            // 尝试获取被毒化的锁
-            if let Ok(mut poisoned_lock) = ANDROID_DATA_DIR.lock() {
-                error!("[修改版本2] 获取到被毒化的锁，尝试恢复");
-                *poisoned_lock = PathBuf::from(path);
-                debug!("[修改版本2] 使用被毒化的锁更新路径为: {:?}", *poisoned_lock);
-            } else {
-                error!("[修改版本2] 无法恢复被毒化的锁，放弃设置数据目录");
-            }
+            // 尝试获取被毒化的锁的数据并更新
+            let mut poisoned_lock = e.into_inner();
+            error!("[修改版本2] 获取到被毒化的锁，尝试恢复");
+            *poisoned_lock = PathBuf::from(path);
+            debug!("[修改版本2] 使用被毒化的锁更新路径为: {:?}", *poisoned_lock);
         }
     }
     
