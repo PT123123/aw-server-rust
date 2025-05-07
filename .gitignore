@@ -10,3 +10,4 @@ NDK
 *.sqlite*
 *.db
 *.db-journal
+node_modules

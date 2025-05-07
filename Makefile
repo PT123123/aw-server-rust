@@ -1,4 +1,4 @@
-.PHONY: all aw-server aw-webui build install package set-version test test-coverage test-coverage-tarpaulin test-coverage-grcov coverage coverage-html coverage-lcov
+.PHONY: all aw-server aw-webui build install package set-version test test-coverage test-coverage-tarpaulin test-coverage-grcov coverage coverage-html coverage-lcov cypress-open cypress-test cypress-test-summary
 
 all: build
 build: aw-server aw-sync
@@ -151,3 +151,16 @@ clean:
 
 build:
 	RUSTFLAGS="-A unused_variables -A dead_code" cargo build --release
+
+cypress-headed:
+	npx cypress run --headed 
+
+cypress-test:
+	node make-cypress-test.js
+
+cypress-test-summary:
+	@echo "==========================================="
+	@echo "        标签高亮测试摘要                 "
+	@echo "==========================================="
+	@echo "正在统计测试用例..."
+	@find cypress/e2e -name "*.spec.js" -exec grep -c "it(" {} \; | awk '{sum += $$1} END {print "总计测试用例数: " sum}'

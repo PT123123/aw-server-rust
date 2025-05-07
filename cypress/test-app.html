@@ -1,0 +1,219 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>标签高亮测试</title>
+  <style>
+    body {
+      font-family: 'Arial', sans-serif;
+      max-width: 800px;
+      margin: 0 auto;
+      padding: 20px;
+    }
+    .editor-content {
+      border: 1px solid #ccc;
+      padding: 10px;
+      min-height: 100px;
+      margin-bottom: 20px;
+    }
+    .tag-highlight, [data-tag="true"] {
+      background-color: rgba(144, 202, 249, 0.5);
+      border-radius: 3px;
+      padding: 0 2px;
+      margin: 0 1px;
+      display: inline-block;
+    }
+    .tag-highlight:hover, [data-tag="true"]:hover {
+      background-color: rgba(66, 165, 245, 0.7);
+    }
+    #test-cases, #test-results {
+      margin-top: 20px;
+    }
+    .test-case {
+      margin-bottom: 10px;
+      padding: 10px;
+      border: 1px solid #ddd;
+    }
+    .success {
+      border-left: 4px solid green;
+    }
+    .failure {
+      border-left: 4px solid red;
+    }
+    pre {
+      background-color: #f5f5f5;
+      padding: 10px;
+      overflow: auto;
+    }
+    #custom-result {
+      margin-top: 20px;
+      padding: 10px;
+      border: 1px solid #ddd;
+    }
+  </style>
+</head>
+<body>
+  <h1>标签高亮测试页面</h1>
+  
+  <h2>NoteEditor 模拟</h2>
+  <div class="editor-content" contenteditable="true"></div>
+  
+  <button id="process-tags">处理标签</button>
+  
+  <div id="test-cases">
+    <h2>测试用例</h2>
+    <div class="test-case">
+      <div class="input-text">#啊实打实的 asdds 所发生的</div>
+      <button class="apply-test">应用此测试</button>
+    </div>
+    <div class="test-case">
+      <div class="input-text">#特殊_字-符!@$%^& 后面的文本</div>
+      <button class="apply-test">应用此测试</button>
+    </div>
+    <div class="test-case">
+      <div class="input-text">这里有 #第一个标签 然后是 #第二个标签 最后是普通文本</div>
+      <button class="apply-test">应用此测试</button>
+    </div>
+    <div class="test-case">
+      <div class="input-text">文本开始 #中间标签 光标稳定 文本结束</div>
+      <button class="apply-test">应用此测试</button>
+    </div>
+    <div class="test-case">
+      <div class="input-text">#tag1#tag2#tag3 连续标签测试</div>
+      <button class="apply-test">应用此测试</button>
+    </div>
+    <div class="test-case">
+      <div class="input-text">混合标签 #中文tag和English 混合内容</div>
+      <button class="apply-test">应用此测试</button>
+    </div>
+    <div class="test-case">
+      <div class="input-text">特殊标点(#括号内标签)和[#方括号内标签]以及{#花括号内标签}</div>
+      <button class="apply-test">应用此测试</button>
+    </div>
+    <div class="test-case">
+      <div class="input-text">标签后跟标点 #标签。 #标签, #标签! #标签?</div>
+      <button class="apply-test">应用此测试</button>
+    </div>
+    <div class="test-case">
+      <div class="input-text">长标签测试 #这是一个非常非常非常非常非常非常非常非常长的标签 后面文本</div>
+      <button class="apply-test">应用此测试</button>
+    </div>
+    <div class="test-case">
+      <div class="input-text">数字标签测试 #123 #456 #789</div>
+      <button class="apply-test">应用此测试</button>
+    </div>
+  </div>
+  
+  <div id="custom-result">
+    <h2>测试结果</h2>
+    <pre></pre>
+  </div>
+  
+  <script>
+    // 模拟实现标签高亮功能
+    function highlightTags(text) {
+      // 处理各种标签情况
+      
+      // 步骤1: 先处理URL中的#，避免被识别为标签
+      let processedText = text;
+      const urlRegex = /(https?:\/\/[^\s]+)#([^\s]+)/g;
+      processedText = processedText.replace(urlRegex, '$1##URL_HASH##$2');
+      
+      // 步骤2: 处理连续标签 - 在连续标签之间添加零宽空格
+      processedText = processedText.replace(/(#[^\s#]+)(#)/g, '$1\u200B$2');
+      
+      // 步骤3: 匹配标签
+      // 使用更通用的正则表达式，匹配任何非空白字符作为标签内容
+      // 这能处理标签中的:
+      // - 中英文字符
+      // - 数字和下划线
+      // - 特殊字符和标点符号
+      // - 表情符号和其他Unicode字符
+      const tagRegex = /(^|\s|[^\w#])(#[^\s]+)(?=\s|$|\u200B|[^\w#])/g;
+      
+      // 处理标签
+      processedText = processedText.replace(tagRegex, function(match, prefix, tag) {
+        // 检查是否为有效标签格式 - 必须至少包含一个字母数字字符
+        if (tag.length > 1) { // 至少要有 '#' 加一个其他字符
+          return prefix + `<span class="tag-highlight" data-tag="true">${tag}</span>`;
+        }
+        return match; // 不符合标签格式，保持原样
+      });
+      
+      // 步骤4: 处理特殊情况的标签（括号内、引号内等）
+      function processTagsInDelimiters(text, openDelim, closeDelim) {
+        const regex = new RegExp(`(\\${openDelim}[^\\${closeDelim}]*)(#[^\\s]+)(?=\\s|\\${closeDelim})`, 'g');
+        return text.replace(regex, function(match, prefix, tag) {
+          if (tag.length > 1) { // 是有效标签
+            return prefix + `<span class="tag-highlight" data-tag="true">${tag}</span>`;
+          }
+          return match;
+        });
+      }
+      
+      // 处理各种括号内的标签
+      processedText = processTagsInDelimiters(processedText, '(', ')');
+      processedText = processTagsInDelimiters(processedText, '[', ']');
+      processedText = processTagsInDelimiters(processedText, '{', '}');
+      
+      // 步骤5: 特殊情况 - 处理表情符号和Unicode字符
+      // 简化处理方式，避免使用复杂的Unicode正则表达式
+      const emojiDetectRegex = /(#[^\s]+)(\s|$)/g;
+      processedText = processedText.replace(emojiDetectRegex, function(match, possibleTag, suffix) {
+        if (possibleTag.match(/class="tag-highlight"/)) {
+          return match; // 已经处理过的标签，跳过
+        }
+        
+        // 简单检查，如果包含非ASCII字符且没有被处理过，则添加高亮
+        if (/[^\x00-\x7F]/.test(possibleTag) && !possibleTag.includes('class="tag-highlight"')) {
+          return `<span class="tag-highlight" data-tag="true">${possibleTag}</span>${suffix}`;
+        }
+        
+        return match;
+      });
+      
+      // 步骤6: 恢复URL中的#
+      processedText = processedText.replace(/##URL_HASH##/g, '#');
+      
+      // 步骤7: 移除零宽空格
+      processedText = processedText.replace(/\u200B/g, '');
+      
+      return processedText;
+    }
+    
+    // 应用标签高亮到编辑器内容
+    function processTagsInEditor() {
+      const editor = document.querySelector('.editor-content');
+      const text = editor.innerText || editor.textContent;
+      const highlightedText = highlightTags(text);
+      
+      // 更新编辑器内容
+      editor.innerHTML = highlightedText;
+      
+      // 显示处理结果
+      document.querySelector('#custom-result pre').textContent = highlightedText;
+    }
+    
+    // 设置按钮事件处理
+    document.getElementById('process-tags').addEventListener('click', processTagsInEditor);
+    
+    // 设置测试用例应用按钮事件
+    document.querySelectorAll('.apply-test').forEach(button => {
+      button.addEventListener('click', function() {
+        const text = this.previousElementSibling.textContent;
+        const editor = document.querySelector('.editor-content');
+        editor.innerText = text;
+      });
+    });
+    
+    // 用于Cypress测试的辅助函数
+    window.applyTest = function(text) {
+      const editor = document.querySelector('.editor-content');
+      editor.innerText = text;
+      processTagsInEditor();
+      return editor.innerHTML;
+    };
+  </script>
+</body>
+</html> 

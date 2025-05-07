@@ -1,0 +1,24 @@
+{
+  "tagTests": [
+    {
+      "input": "#啊实打实的 asdds 所发生的",
+      "expectedTag": "#啊实打实的"
+    },
+    {
+      "input": "#特殊_字-符!@$%^& 后面的文本",
+      "expectedTag": "#特殊_字-符!@$%^&"
+    },
+    {
+      "input": "这里有 #第一个标签 然后是 #第二个标签 最后是普通文本",
+      "expectedTags": ["#第一个标签", "#第二个标签"]
+    },
+    {
+      "input": "#tag1#tag2#tag3 连续标签测试",
+      "expectedTags": ["#tag1", "#tag2", "#tag3"]
+    },
+    {
+      "input": "混合标签 #中文tag和English 混合内容",
+      "expectedTag": "#中文tag和English"
+    }
+  ]
+} 

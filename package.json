@@ -1,0 +1,16 @@
+{
+  "name": "aw-server-rust-tests",
+  "version": "1.0.0",
+  "scripts": {
+    "cypress:open": "cypress open",
+    "cypress:run": "cypress run",
+    "test": "cypress run",
+    "make-cypress-test": "node make-cypress-test.js"
+  },
+  "devDependencies": {
+    "@vue/cli-service": "^5.0.8",
+    "cypress": "^12.17.4",
+    "vue": "^3.5.13",
+    "vue-template-compiler": "^2.7.16"
+  }
+}
