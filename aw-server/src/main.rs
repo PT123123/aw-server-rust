@@ -156,16 +156,25 @@ async fn main() -> Result<(), rocket::Error> {
     use aw_inbox_rust::db;
     use aw_inbox_rust::SharedDb;
     use std::sync::Arc;
-    
-    // 定义inbox数据库路径
-    let inbox_db_path = "inbox.db"; // 使用默认路径
-    
-    // 先迁移数据库
-    aw_inbox_rust::migrate_db(inbox_db_path).await.expect("数据库迁移失败");
-    
-    // 然后初始化连接池
+
+    // 确定 inbox.db 的路径，使其与 sqlite.db 位于同一目录
+    let inbox_db_filename = if testing { "inbox-testing.db" } else { "inbox.db" };
+    let inbox_db_path = dirs::get_data_dir()
+        .expect("Failed to get data dir")
+        .join(inbox_db_filename);
+    let inbox_db_str = inbox_db_path.to_str().expect("Invalid path");
+
+    info!("Using Inbox DB at path {}", inbox_db_str);
+
+    // Set env var for aw-inbox-rust to pick up the correct path
+    std::env::set_var("DATABASE_URL", inbox_db_str);
+
     let pool = db::init_pool().await.expect("Failed to init inbox db pool");
-    let shared_db: SharedDb = Arc::new(Mutex::new(pool));
+    // migrate is synchronous in the current aw-inbox-rust implementation (rusqlite)
+    db::migrate(&pool).expect("数据库迁移失败");
+    
+    // SharedDb uses std::sync::Mutex
+    let shared_db: SharedDb = Arc::new(std::sync::Mutex::new(pool));
     let rocket = plugins::register_all_plugins(rocket, shared_db);
 
     let _rocket = rocket.ignite().await?;

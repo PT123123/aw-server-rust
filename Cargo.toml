@@ -5,8 +5,10 @@ members = [
     "aw-models",
     "aw-transform",
     "aw-server",
+    "aw-inbox-datastore",
     "aw-inbox-rust",
     "aw-sync",
     "aw-query",
+    "aw-dump", "aw-sync-transport",
 ]
 resolver = "2"
