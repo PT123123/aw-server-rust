@@ -249,7 +249,7 @@ mod tests {
     use crate::endpoints;
 
     const EXT_ORIGIN: &str = "moz-extension://3f2b1c9d-dead-beef-cafe-000000000000";
-    const WEBUI_ORIGIN: &str = "http://127.0.0.1:5600";
+    const LOCALHOST_ORIGIN: &str = "http://127.0.0.1:5600";
 
     fn setup_testserver(cors_regex: Vec<String>) -> Rocket<rocket::Build> {
         let state = endpoints::ServerState {
@@ -260,7 +260,7 @@ mod tests {
         let mut aw_config = AWConfig::default();
         // Pin the port: the default is derived from a mutable global that other
         // tests flip via create_config(), which would otherwise make the
-        // allowed webui origin depend on test execution order.
+        // allowed localhost origin depends on test execution order.
         aw_config.port = 5600;
         aw_config.cors_regex = cors_regex;
         endpoints::build_rocket(state, aw_config)
@@ -456,18 +456,18 @@ mod tests {
         }
     }
 
-    /// Non-extension origins are untouched — the webui is same-origin and
+    /// Non-extension origins are untouched — the localhost UI is same-origin and
     /// still needs full access.
     #[test]
-    fn test_webui_origin_unaffected() {
+    fn test_localhost_origin_unaffected() {
         let client = client();
         let res = client
             .get("/api/0/export")
             .header(Header::new("Host", "localhost:5600"))
-            .header(Header::new("Origin", WEBUI_ORIGIN))
+            .header(Header::new("Origin", LOCALHOST_ORIGIN))
             .dispatch();
         assert_eq!(res.status(), Status::Ok);
-        assert_eq!(allow_origin(&res).as_deref(), Some(WEBUI_ORIGIN));
+        assert_eq!(allow_origin(&res).as_deref(), Some(LOCALHOST_ORIGIN));
     }
 
     /// Native clients send no Origin header and must be unaffected.

@@ -1,4 +1,4 @@
-.PHONY: all aw-server aw-webui build install package set-version test test-coverage test-coverage-tarpaulin test-coverage-grcov coverage coverage-html coverage-lcov
+.PHONY: all aw-server build install package set-version test test-coverage test-coverage-tarpaulin test-coverage-grcov coverage coverage-html coverage-lcov
 
 all: build
 build: aw-server aw-sync
@@ -10,7 +10,6 @@ else
     PREFIX := /usr/local
 endif
 
-
 # Build in release mode by default, unless RELEASE=false
 ifeq ($(RELEASE), false)
 	cargoflag :=
@@ -20,41 +19,15 @@ else
 	targetdir := release
 endif
 
-aw-server: set-version aw-webui
+aw-server: set-version
 	cargo build $(cargoflag) --bin aw-server
 
 run: aw-server
 	@fuser -k 5600/tcp 2>/dev/null || true
 	./target/$(targetdir)/aw-server
 
-ui-test:
-	@fuser -k 5600/tcp 2>/dev/null || true
-	if ! lsof -i:5600 | grep LISTEN > /dev/null; then \
-	  echo "[ui-test] Starting aw-server in background (port 5600)..."; \
-	  cargo build $(cargoflag) --bin aw-server; \
-	  nohup ./target/$(targetdir)/aw-server > aw-server.log 2>&1 & \
-	  sleep 5; \
-	fi
-	@if [ ! -d aw-webui/node_modules ]; then \
-	  echo "[ui-test] Installing npm dependencies..."; \
-	  cd aw-webui && npm install; \
-	fi
-	@if ! lsof -i:27180 | grep LISTEN > /dev/null; then \
-	  echo "[ui-test] Starting aw-webui dev server in background (port 27180)..."; \
-	  cd aw-webui && nohup npm run serve > ../webui-serve.log 2>&1 & \
-	  sleep 10; \
-	fi
-	cd aw-webui && npx cypress run
-
 aw-sync: set-version
 	cargo build $(cargoflag) --bin aw-sync
-
-aw-webui:
-ifeq ($(SKIP_WEBUI),true) # Skip building webui if SKIP_WEBUI is true
-	@echo "Skipping building webui"
-else
-	make -C ./aw-webui build
-endif
 
 android:
 	./install-ndk.sh

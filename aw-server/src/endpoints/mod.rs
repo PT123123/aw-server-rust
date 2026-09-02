@@ -1,4 +1,3 @@
-use rust_embed::RustEmbed;
 use std::ffi::OsStr;
 use std::path::{Path, PathBuf};
 
@@ -14,10 +13,6 @@ use crate::config::AWConfig;
 use aw_datastore::Datastore;
 use aw_models::Info;
 
-#[derive(RustEmbed)]
-#[folder = "$AW_WEBUI_DIR"]
-struct EmbeddedAssets;
-
 pub struct AssetResolver {
     asset_path: Option<PathBuf>,
 }
@@ -28,13 +23,12 @@ impl AssetResolver {
     }
 
     fn resolve(&self, file_path: &str) -> Option<Vec<u8>> {
-        if let Some(asset_path) = &self.asset_path {
-            let content = std::fs::read(asset_path.join(file_path));
-            if let Ok(data) = content {
-                return Some(data);
-            }
+        let asset_path = self.asset_path.as_ref()?;
+        let content = std::fs::read(asset_path.join(file_path));
+        if let Ok(data) = content {
+            return Some(data);
         }
-        Some(EmbeddedAssets::get(file_path)?.data.to_vec())
+        None
     }
 }
 
@@ -86,14 +80,14 @@ impl Fairing for CSPFairing {
     }
 }
 
-// No-Cache Fairing — prevents WebView from caching stale webui assets
+// No-Cache Fairing — prevents WebView from caching stale static assets
 pub struct NoCacheFairing;
 
 #[rocket::async_trait]
 impl Fairing for NoCacheFairing {
     fn info(&self) -> rocket::fairing::Info {
         rocket::fairing::Info {
-            name: "No-Cache for webui assets",
+            name: "No-Cache for static assets",
             kind: rocket::fairing::Kind::Response,
         }
     }

@@ -13,7 +13,7 @@
 //! ```
 //!
 //! Exempt paths (always public):
-//! - `GET /api/0/info` — health/version endpoint used by clients and the webui
+//! - `GET /api/0/info` — health/version endpoint used by clients
 //!
 //! CORS preflight requests (OPTIONS) are also passed through unconditionally so
 //! the browser can obtain allowed headers before sending the actual request.

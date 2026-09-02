@@ -46,7 +46,7 @@ struct Opts {
     #[clap(short = 'c', long = "config")]
     config: Option<PathBuf>,
 
-    /// Path to webui override
+    /// Path to static assets override
     #[clap(long)]
     webpath: Option<String>,
 
@@ -142,7 +142,7 @@ async fn main() -> Result<(), rocket::Error> {
     info!("Using DB at path {:?}", db_path);
 
     let asset_path = opts.webpath.map(PathBuf::from);
-    info!("Using aw-webui assets at path {:?}", asset_path);
+    info!("Serving static assets from path {:?}", asset_path);
 
     // Only use legacy import if opts.dbpath is not set
     let legacy_import = !opts.no_legacy_import && opts.dbpath.is_none();
